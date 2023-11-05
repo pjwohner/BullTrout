@@ -1,0 +1,120 @@
+
+model { #model
+# Priors
+
+alphasig ~ dnorm(0,0.368) 		# Intercept in sigma estimate  
+alphaphi ~ dnorm(0,0.368)     #intercept for phi (needs to be positive)
+alphalam ~ dnorm(0,0.368)    #intercept for lam0
+alphalam1 ~ dnorm(0,0.368)    #intercept for lam0 first encounters
+    #betaphiFlowA  ~ dnorm(0,0.368) #beta for phi for flowA
+#betaphiFlowC  ~ dnorm(0,0.368) #beta for phi for flowC
+betaF  ~ dnorm(0,0.368)      #Coefficient for flowA in S estimate 
+ #betaF2 ~ dnorm(0,0.368)      #Coefficient for flowC in S estimate
+ #betasig  ~ dnorm(0,0.368)     #Coefficient for flow C in sigma estimate 
+ #betasig2 ~ dnorm(0,0.368)     #Coefficient for temp in sigma estimate
+  #betaphipos~ dnorm(0,0.368)    #Coefficient for position in phi
+ #betaphiTemp ~ dnorm(0,0.368)  #beta for phi for tempB
+betaT2 ~ dnorm(0,0.368)       #Coefficient for tempB in S estimate 
+ #betaFL.phi ~ dnorm(0,0.368)   #beta for phi for size
+ #betaFL.S ~ dnorm(0,0.368)     #beta for S for size
+#betaW~ dnorm(0,0.368)
+tauv  ~ dgamma(0.1,0.1) 	    #spread for correlated S's (needs to be positive)
+tau <- 1/(tauv*tauv)  	      #spread (precision) for correlated S's
+
+#priors reach encounter betas
+            for(zz in 1:3){
+              gamma[zz]~dnorm(0,0.368)
+            }
+ # #priors flow and temp betas
+            # for(xx in 1:17){
+            #   tfgamma[xx]~dnorm(0,0.368)
+            # }
+            
+# # #indicator variable prior
+         # for(yy in 1:30){
+         #  w[yy] ~ dbern(0.5)
+         # }
+
+##sigma is how far fish can be available to move into reach from other reaches
+    for (t in 1:T){  # t = primary sample occasion (Weeks)
+  	    log(sigma[t]) <- alphasig 
+    	
+    	       # log(sigma[t]) <- alphasig + w[10]*tfgamma[1]*flowA[t] + w[11]*tfgamma[2]*flowC[t]+
+    	       #       w[12]*tfgamma[3]*tempE[t] + w[13]*tfgamma[4]*tempB[t]
+    	  sigma2[t] <- sigma[t] * sigma[t]  # Weekly sigma2
+	          } #t
+################################	        
+      for (i in 1:M){ # m individuals, first are period of first tagging   
+  	    for(t in 1:(first[i]-1)) { #t   periods prior to river entry
+	                S[i,t] <- 0  # Fix S to 0 (not in river), needed to follow node in jags
+	                z[i,t] <- 0  # Fit z to 0 (not in river), needed to follow node in jags
+                          } #t
+  #############################
+            for(t in (last[i]+1):T) {#t  Periods after documented censor
+	                    S[i,t] <- 0  # Fix S to 0 in river and known alive but not seen again this timeframe
+	                    z[i,t] <- 0  # Fix z to 0 same as above needed to follow node in JAGS
+               	}#t
+  	           
+  	    z[i,first[i]]  ~ dbern(1)  # state = Known to be alive at entry into study area
+  	    S[i,first[i]]  ~ dunif(4,40)  # this is where fish enter study was 4
+###############################     
+        for(j in 1:nreach) {  #j locations 
+	        D2[i,j,first[i]] <- pow(S[i,first[i]]-reach.loc[j], 2)#estimate activity center   
+          log(lam0[i,j,first[i]]) <- alphalam1
+          lam[i,j,first[i]] <- lam0[i,j,first[i]]*exp(-D2[i,j,first[i]]/
+                                       (2*sigma2[first[i]])) 
+              tmp[i,j,first[i]] <- lam[i,j,first[i]] 
+              y[i,j,first[i]] ~ dpois(tmp[i,j,first[i]])
+                  } #j       
+################################      
+      for (t in (first[i]+1):last[i]) {
+                  #for (t in (first[i]+1):T) { #t are weeks we have 
+              S[i,t] ~ dnorm(S[i,t-1] + betaF*flowA[t-1]+ betaT2*tempB[t-1],tau)T(4,40)#truncated normal
+                  ##indicator selection below
+                  #S[i,t] ~ dnorm(S[i,t-1] + w[14]*tfgamma[5]*flowA[t] + w[15]*tfgamma[6]*flowC[t]+
+     	            #w[16]*tfgamma[7]*tempE[t] + w[17]*tfgamma[8]*tempB[t]+ w[29]*betaFL.S*sizeFL[i] ,tau)
+      
+     
+ 
+  #activity center is a funciton of where it was last time step and flow...with 
+  #some error/variability (tau)...you can truncate this to make sure they stay in 
+  #places it is possible to go (i.e., if they cant get through a barrier on the river). 
+  #You could also add an intercept if you think there is some constant change in the 
+  #activity center across time periods.
+         		                          
+        for(j in 1:nreach) { #j locations
+		        D2[i,j,t] <- pow(S[i,t]-reach.loc[j], 2)   
+            log(lam0[i,j,t]) <- alphalam + gamma[1]*Cov1[j] + gamma[2]*Cov2[j]+ gamma[3]*Cov3[j]
+            
+          #gamma[4]*Cov4[j] #+ gamma[5]*Cov5[j] #+ gamma[6]*flowA[t] + gamma[7]*flowC[t] 
+          # log(lam0[i,j,t]) <- alphalam +  w[1]*gamma[1]*Cov1[j] + w[2]*gamma[2]*Cov2[j] +
+          #   w[3]*gamma[3]*Cov3[j] + w[4]*gamma[4]*Cov4[j] + w[5]*gamma[5]*Cov5[j]+
+          #   w[6]*gamma[6]*Cov6[j] + w[7]* gamma[7]*Cov7[j] +w[8]*gamma[8]*Cov8[j] +
+          #   w[9]*gamma[9]*Cov9[j] + w[27]*gamma[10]*Cov10[j]+ w[28]*gamma[11]*Cov11[j]+
+          #  w[23]*tfgamma[14]*flowA[t] + w[24]*tfgamma[15]*flowC[t] + 
+          #  w[25]*tfgamma[16]*tempE[t] + w[26]*tfgamma[17]*tempB[t]
+      
+            lam[i,j,t] <- lam0[i,j,t] * exp(-D2[i,j,t]/(2*sigma2[t]))#pdf
+	          tmp[i,j,t] <- z[i,t]*lam[i,j,t]
+	          y[i,j,t] ~ dpois(tmp[i,j,t])
+	                    } #j
+#############################                
+###put a logistic regression on phi
+          logit(phi[i,t])<- alphaphi #+ betaW*week[t]
+                      
+                #+ betaFL.phi*sizeFL[i]#betaphiFlowC*flowC[t]
+                # logit(phi[i,t])<- alphaphi + w[18]*tfgamma[9]*S[i,t] + w[19]*tfgamma[10]*flowA[t] +
+                # w[20]*tfgamma[11]*flowC[t] + w[21]*tfgamma[12]*tempE[t] + w[22]*tfgamma[13]*tempB[t]+
+                #  w[30]*betaFL.phi*sizeFL[i]
+        
+            phi2[i,t] <- max(0.0001,min(phi[i,t],0.9999))#prevents outside 0 and 1
+            phiUP[i,t] <- z[i,t-1]*phi2[i,t]
+            z[i,t] ~ dbern(phiUP[i,t])	# states alive or not
+                     	   } # t
+
+} # m
+ 
+    	
+                 
+        } # end model
+
