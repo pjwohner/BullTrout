@@ -1,0 +1,64 @@
+
+model { #model
+# Priors
+  lam0 ~ dunif(0.1,0.2)  # constant Weekly encounter rate
+  alphaphi ~ dnorm(0,0.368)      #intercept for phi
+  alphasig ~ dnorm(0,0.368)  # Intercept in sigma estimate
+  #betasig ~ dnorm(0,0.368)  #Coefficient for flow in sigma estimate 
+  betasig2 ~ dnorm(0,0.368)
+  betaT2 ~ dnorm(0,0.368) 
+  betaT3 ~ dnorm(0,0.368) 
+    betaphiT ~ dnorm(0,0.368)     #beta for phi for temp
+    #betaphipos ~ dnorm(0,0.368)    #Coefficient for position in phi
+  tauv ~ dgamma(0.1,0.1)  	    # spread for correlated S's
+  tau <- 1/(tauv*tauv)  	#  spread (precision) for correlated S's
+#########################
+      for (t in 1:T){  #t = primary sample occasion (Weeks)
+  	      # Weekly sigma = weekly movement with temp covars
+  	      log(sigma[t]) <- alphasig  + betasig2*tempB[t]# + betasig*tempE[t] 
+    
+    	    sigma2[t] <- sigma[t] * sigma[t]  # Weekly sigma2
+	          } #t
+##############################  
+      for (i in 1:M){ #m individuals, first are period of first tagging   
+  	   	 for(t in 1:(first[i]-1)) { #t   periods prior to river entry
+  	   	  S[i,t] <- 0  # Fix S to 0 (not in river), needed to follow node in jags
+	        z[i,t] <- 0  # Fit z to 0 (not in river), needed to follow node in jags
+                          } #t
+##############################  	   	  
+  for(t in (last[i]+1):T) {#t  Periods after documented censor
+	      S[i,t] <- 0  # Fix S to 0 in river and known alive but not seen again this timeframe
+	      z[i,t] <- 0  # Fix z to 0 same as above needed to follow node in JAGS
+               	}#t
+########################  
+  	   	  z[i,first[i]]  ~ dbern(1)  # state=Known to be alive at entry into study area
+  	      S[i,first[i]] ~ dunif(1,100)  #Possible fish reaches in tagging period
+###################################	   
+        for(j in 1:nreach) {  #j locations 
+	        D2[i,j,first[i]] <- pow(S[i,first[i]]-reach.loc[j], 2)   
+         lam[i,j,first[i]] <- lam0*exp(-D2[i,j,first[i]]/(2*sigma2[first[i]])) 
+          tmp[i,j,first[i]] <- lam[i,j,first[i]] 
+          y[i,j,first[i]] ~ dpois(tmp[i,j,first[i]])
+               } #j
+####################################      
+        for (t in (first[i]+1):last[i]) { #t are weeks
+            S[i,t] ~ dnorm(S[i,t-1] + betaT2*tempB[t-1]+betaT3*tempE[t-1], tau)T(1,100) 
+ 
+            for(j in 1:nreach) { #j locations
+		            D2[i,j,t] <- pow(S[i,t]-reach.loc[j], 2)   
+                lam[i,j,t] <- lam0 * exp(-D2[i,j,t]/(2*sigma2[t]))
+	              tmp[i,j,t] <- z[i,t]*lam[i,j,t]
+	              y[i,j,t] ~ dpois(tmp[i,j,t])
+		 		   	        } #j
+############################ 	   	
+ 	   		      #put a logistic regression on phiUp here where it is in reach 
+	       	      logit(phi[i,t])<-alphaphi #+  betaphiT*tempB[t]#betaphipos*S[i,t]+
+   	   	        phi2[i,t] <- max(0.0001,min(phi[i,t],0.9999))#so doesn't go outside 0 and 1 and crash
+  	   		      phiUP[i,t] <- z[i,t-1]*phi2[i,t]      
+ 	              z[i,t] ~ dbern(phiUP[i,t])	# states alive or not
+	       	  
+	       	        } # t
+              } # m
+            } #model
+
+
