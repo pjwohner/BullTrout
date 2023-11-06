@@ -3,10 +3,9 @@
 # Similar to examples in Gardner et al. 2010, Kery et al. 2010, Sollmann et al. 2011
 library(reshape);library(tidyverse);library(nnet)
 library(MCMCvis);library(rjags);library(jagsUI);library(mcmcOutput)
-#setwd("C:/newlaptop/FISH/RapidRiverBullTrout/R_scripts/SCR_BT/")
 setwd("~/patti1/Bull Trout")
 AS10pre <- read.table("BT_SCR_detect1992_1Knov132022.txt",header=T)
-##add known fish weeks to be able to plot later on (becasue same distance between weeks)
+##add known fish weeks to be able to plot later on (because same distance between weeks)
 TagID <- c(54,54,74,74,174,195)
 Week <- c(11,13,6,8,8,4)
 RKM <- c( 28044.0, 28044.0,10593.9,10593.9,28044.0,10593.9)
@@ -120,26 +119,6 @@ tempE=(TempE92-mean(TempE92))/(sd(TempE92))#standardize flow variable
 # cor(flowmets[,to_test])
 ###bring in covariates for reaches we want joined
 JimCovRRa <- read.csv("JIMSCOVSnov3.csv",header=T)
-#############################
-##make plot of shan and reach distance
-################################
-# ggformat<-(
-#   ggplot(JimCovRR,aes(x=CumSum/1000+59.0969,y=Shan))+
-#     geom_point(size=2, shape = 20) +
-#     geom_smooth(method = "glm",se = TRUE,level = 0.90,color = "black")+
-#     theme_bw()+
-#     labs(title = "", x = "Rapid River reach (RKM)", y = "Shan-Wien index")+
-#     theme(axis.text.x = element_text(angle = 0, hjust = 0, size=12,color="black"))+
-#     theme(axis.text.y = element_text(angle = 0, hjust = 0, size=12,color="black"))+
-#     theme(axis.title.y = element_text(size = rel(1.6), angle = 90))+
-#     theme(axis.title.x = element_text(size = rel(1.6), angle = 00))+
-#     theme(plot.margin = margin(0,1,0,0, "cm"))+
-#     ylim(1,2.5)+
-#     xlim(60,100)
-#    )
-# ggsave(filename="BTPREshanindbyRKMdec18.png", plot=ggformat, device="png",
-#        height=5, width=5, units="in", dpi=800)
-
 JimCovRRa$CumSum <- as.numeric(JimCovRRa$CumSum)
 ##make average length variables
 JimCovRR <- JimCovRRa %>%
@@ -365,13 +344,8 @@ parameters <- c("alphaphi","alphasig","alphalam","alphalam1",
                 "betaF", "betaT2","betaphipos","TOTALS",
                 "tauv", "gamma","S","phi","z","lam0","sigma"
               )
-#cant get sigma in the same output as the rest because too large but do not need for plots
-
 #Call JAGS
 #Sys.time()
- # ZZ<-jags(data=JAGSdata,inits=inits,parameters.to.save=parameters,model.file="ModelCJS.txt",n.thin=2,
- #          n.chains=2, n.burnin=50,n.iter=100,parallel=TRUE)#n.adapt = 10,
-
 ZZ<-jags(data=JAGSdata,inits=inits,parameters.to.save=parameters,model.file="ModelCJS.txt",n.thin=2,
            n.chains=3, n.adapt = 2000,n.burnin=6000,n.iter=20000,parallel=TRUE)#
 #Sys.time()
@@ -388,8 +362,6 @@ mco2 <- mcmcOutput(ZZ, params=c("TOTALS","alphaphi","alphasig","alphalam","alpha
                           ))
 mco2summary <- summary(mco2,CRImass=0.90)
 
-# View(summary(mco2[c("alphaphi","alphasig","alphalam",
-#                     "betaF", "betaT2","betaphipos","tauv", "gamma")],CRImass=0.90))
 ###############################################################################
 ###1. model selection for indicator variables
 ################################################################################
@@ -423,12 +395,6 @@ lam0 <- mco2$lam0
 (lCLsig <- quantile((sigma),probs= 0.05,na.rm = TRUE)) 
 (UCLsig <- quantile((sigma),probs= 0.95,na.rm = TRUE))
 ############################################################
-# #to backtransform negative estimates into odds ratio(did not do for table)
-var1<-exp(-0.358)
-##to get estimate back to be over 1
-(p3<-1/var1)
-##positvie estimates
-exp(0.265)
 #diagPlot(mco2)      # diagnostic plots
 #plot(mco2)          # plot posterior distributions
 #summary(mco2)       # display a summary of parameters in the Console
@@ -462,93 +428,6 @@ mean(wk.phi$weekphi)
 mean(wk.phi$LCLphi)
 mean(wk.phi$UCLphi)
 ################################################################################
-##!!!!MAKE A PLOT FOR SURVIVAL BY WEEK with credible intervals!
-ggformat<-(
-ggplot(wk.phi, aes(x = week, y=weekphi,ymin = LCLphi, ymax = UCLphi)) +
-  geom_point()+
-  geom_pointrange(color="dodgerblue",size=0.5, shape = 20)+
-  scale_x_continuous(breaks = c(1,3,5,7,9,11,13,15,17),labels=c("1" = "May 26",
-            "3" = "Jun 9","5" = "Jun 23","7" = "Jul 7","9" = "Jul 22",
-            "11" = "Aug 4", "13" = "Aug 18","15" = "Sept 1","17" = "Sept 15"),
-          limits = c(1, 18))+
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.2, size=9.5,color="black"))+
-  theme(axis.text.y = element_text(angle = 0, hjust = 10, size=11,color="black"))+
-  theme(axis.title.y = element_text(size = rel(1.5), angle = 90))+
-  theme(axis.title.x = element_text(size = rel(1.5), angle = 00))+
-  #theme(plot.margin = margin(0,1.2,1,1, "cm"))+
-  labs(title = "", y = "Mean survival", x = "")+
-  ylim(0,1)
- )
- ggsave(filename="BTPRE1992weeklyphiDec19.png", plot=ggformat, device="png",
-        height=5, width=5, units="in", dpi=800) 
- #dev.off()
-#######################################################################
- ##make a plot for survival with S[i,t]
- ###########################################################################################
- #  ggformat<-(
- #    ggplot(new_frame,aes(x=avg.S+59.0969,y=avg.phi, color=fish))+
- #     geom_point(size=2, shape = 20) +
- #     theme_bw()+
- #    scale_color_viridis_b()+
- #      labs(title = "", x = "Position in river (RKM)", y = "Mean survival (??)")+
- #     theme(axis.text.x = element_text(angle = 0, hjust = 0, size=12,color="black"))+
- #     theme(axis.text.y = element_text(angle = 0, hjust = 0, size=12,color="black"))+
- #     theme(axis.title.y = element_text(size = rel(1.6), angle = 90))+
- #     theme(axis.title.x = element_text(size = rel(1.6), angle = 00))+
- #     theme(plot.margin = margin(0,1,0,0, "cm"))+
- #     xlim(50,100)+
- #      theme(legend.position = "none") 
- # )
- # ggsave(filename="BTPRE1992SITdec4.png", plot=ggformat, device="png",
- #        height=5, width=5, units="in", dpi=800)
-#############################################################
-##make df for movement for fish that are very likely alive
-################################################################
-#filter out NAs and z<0.7 (not likely alive)
-movements <- new_frame%>%
-  filter(z!="NA")%>%
-  filter(z>0.70)
-flow <- as.data.frame(FlowA92)
-flow$week <- sort(unique(movements$week))
-dfpre <- left_join(flow,movements)
-##temperature
-temp <- as.data.frame(TempB92)
-temp$week <- sort(unique(movements$week))
-df <- left_join(temp,dfpre)
-df <- as.data.frame(df)
-####################################################################################
-###all 1992 fish MOVEMENTS (S) plotted together
-###################################################################################
-df$fish <- as.factor(df$fish)
-ggformat <- (
-  ggplot(df, aes(x = week, y=avg.S+56, color=fish)) +
-  #ggplot(df, aes(x = week, y=avg.S+59.0969, color=fish)) +
-    geom_point(size = 1)+
-    geom_line(aes(y = FlowA92*6), color="blue4")+
-    geom_line(aes(y = TempB92*6), color="red4")+
-    scale_color_viridis_d()+
-    scale_x_continuous(breaks = c(1,3,5,7,9,11,13,15,17),labels=c("1" = "May 26",
-                "3" = "Jun 9","5" = "Jun 23","7" = "Jul 7","9" = "Jul 22",
-                 "11" = "Aug 4", "13" = "Aug 18","15" = "Sept 1","17" = "Sept 15"),
-                  limits = c(1, 18))+
-   scale_y_continuous("Reach location (RKM)",limits = c(0, 102),
-          sec.axis = sec_axis(~ . /6, name = "Flow (cms) + Temp ?C",breaks = c(0,5,10,15))
-                                    )+
-    theme_bw()+
-    theme(axis.text.x = element_text(angle = 0, hjust = 0.2, size=8.5,color="black"))+
-    theme(axis.text.y = element_text(angle = 0, hjust = 0, size=10,color="black"))+
-    theme(axis.title.y = element_text(size = rel(1.2), angle = 90))+
-    theme(axis.title.x = element_text(size = rel(1.2), angle = 00))+
-    labs(title = "", x = "")+
-    theme(plot.margin = margin(0,1,0,0, "cm"))+
-    theme(legend.position = "none") 
-)
-ggsave(filename = "BT_Movements1992dec19.png", plot=ggformat,
-       device="png",height=4,width=5,units = "in",dpi=800)
-############################################################################
-########   make plot lam0 by reach
-############################################################################
    counter <-1
   m_covar <- matrix(0,nrow=21600, ncol = 8)
   for (i in 1:30) {
@@ -581,22 +460,4 @@ ggsave(filename = "BT_Movements1992dec19.png", plot=ggformat,
   mean(lam0reach$LCI)
   mean(lam0reach$UCI)
 #####################################################################
-  ##!!!!MAKE A PLOT FOR lam0 BY REACH with credible intervals!
-  ggformat<-(
-    ggplot(lam0reach, aes(x = reach, y=lam0reach, ymin = LCI, ymax = UCI)) +
-      geom_point()+
-      geom_pointrange(color="dodgerblue",size=0.5, shape = 20)+
-      theme_bw()+
-      scale_x_continuous(breaks = c(1,5,9,13,17,21,25,29,33,37,40),
-                labels=c("1" = "63","5" = "67", "9" = "72","13" = "76",
-                "17" = "80","21" = "84", "25" = "88","29" = "92",
-                "33" = "94","37" = "96","40" = "99"))+
-      theme(axis.text.x = element_text(angle = 0, hjust = 0, size=10,color="black"))+
-      theme(axis.text.y = element_text(angle = 0, hjust = 0, size=12,color="black"))+
-      theme(axis.title.y = element_text(size = rel(1.4), angle = 90))+
-      theme(axis.title.x = element_text(size = rel(1.4), angle = 00))+
-      ylim(0,1)+
-      labs(title = "", y = "Mean encounter rate", x = "Rapid River Reach (RKM)")
-  )
-  ggsave(filename="BTPRE1992reachlam0Dec19.png", plot=ggformat, device="png",
-         height=5, width=5, units="in", dpi=800) 
+ 
