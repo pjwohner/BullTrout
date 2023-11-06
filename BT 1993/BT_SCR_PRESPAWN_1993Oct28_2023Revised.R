@@ -16,33 +16,10 @@ AS10 <- AS10pre1993%>%
   arrange(TagID,Week,RKM)%>%   
   mutate(RKM =RKM/1000)#change from meters to km 
 ############################################################################
-##make abacus plot for 1993
 #age2 fish Nradionum =9376,9356,"9316","9295","26","9136","36","26","9916"
 detect <- read.csv("detect1993nov132022.csv",header=T)
 #names(detect)
 
-detectgg <- detect%>%
-  mutate(Nradionum=as.character(Nradionum))
-#make an abacus plot of raw detections
-# ggformat<-(
-#   ggplot(detectgg,aes(x=week,y=Nradionum,col = RELO_METHO))+
-#     geom_jitter(size=1.25, shape = 20,width = 0.17,height =0.13) +
-#     theme_bw()+
-#     labs(title = "", x = "Weeks", y = "Fish")+
-#     scale_x_continuous(breaks = c(1,3,5,7,9,11,13,15,17),labels=c("1" = "May 26",
-#                                                                   "3" = "Jun 9","5" = "Jun 23","7" = "Jul 7","9" = "Jul 22",
-#                                                                   "11" = "Aug 4", "13" = "Aug 18","15" = "Sept 1","17" = "Sept 15"))+
-#     #  limits = c(1, 18))+
-#     theme( panel.grid.major.x = element_blank(),panel.grid.minor.x = element_blank())+
-#     theme(axis.text.x = element_text(angle = 0, hjust = 0.5, size=8,color="black"))+
-#     theme(axis.text.y = element_text(angle = 0, hjust = 0.5, size=8,color="black"))+
-#     theme(axis.title.y = element_text(size = rel(1.6), angle = 90))+
-#     theme(axis.title.x = element_text(size = rel(1.6), angle = 00))+
-#     theme(plot.margin = margin(0,1,0,0, "cm"))+
-#     theme(legend.position = "none")
-# )
-# ggsave(filename="BTPRE1993abacusplot.png", plot=ggformat, device="png",
-#        height=6, width=7, units="in", dpi=800)
 ############################################################################################
 melted.rkm <- melt(AS10, id=c("TagID","RKM")) 
 tagid.week <- cast(melted.rkm, TagID ~ RKM ~ value, fill=0, length)
@@ -69,14 +46,6 @@ first <- as.numeric(first$firstcap)
 last <- c(16,17,18,18,16,15,16,18,15,16,15,18,18,17,18,15,15,16,18,18,18,18,15,15,16,16,15,15)
 #week <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18)
 #unique(AS10$TagID)
-# firstflowA <- c(5.327107,20.420492,18.159190,18.159190,18.159190,
-#                 13.122836, 10.796809,  7.868038,7.868038,7.868038,13.122836,
-#                 13.122836,13.122836,13.122836,13.122836,13.122836,7.868038,7.868038,
-#                 7.868038,7.868038,18.159190,18.159190,18.159190,13.122836,
-#                 18.159190,18.159190,18.159190,18.159190)
-# firstflowC <- c(-2.54093138,1.43202341,0.65533275,0.65533275,0.65533275,-5.03635353,
-#                 -2.32602673,-2.92877105,-2.92877105,-2.92877105,-5.03635353,-5.03635353,
-#                 -5.03635353,-5.03635353,-5.03635353,-2.92877105,-2.92877105,)  
 #############################################################################
 ###AGE of fish in the study
 ##############################################################################
@@ -377,29 +346,6 @@ mco2 <- mcmcOutput(ZZ, params=c("alphaphi","alphalam","alphasig","alphalam1",
 
 mco2summary <- summary(mco2,CRImass=0.90)#summary with rhats, lcl, ucl for updating suppl table estimates
 
-load("ZZ_1993.Rdata")
-library(MCMCvis)#load bayes plotting package
-#make caterpillar plot from MCMCvis package
-##!!READ THIS!!! To save these plots you must go to the plot viewer,
-##choose export: save as pdf, PDF size = 5x7, choose landscape and use cairo pdf device
-##then open the pdf go to file:export to:image:png
-##this will give a high quality and consistent image....
-RStudioGD() #this will set the plot device (dev) to the plot pane in rstudio
-MCMCplot(ZZ,params = c("alphasig","betaageS", "betaT2","alphalam","alphalam1",
-                       'gamma','alphaphi', "betaphiFlow","tauv"),ci = c(50, 90), guide_lines = TRUE,HPD = TRUE,
-         xlab = 'Parameter estimate',sz_med = 1.1,sz_labels = 1.0,sz_ax = 1.1,
-         pos_tick=c(-3,-2,-1,0,1,2,3,4,5,6),sz_tick_txt=0.8,sz_ax_txt=1.1,
-         labels = c("Scale int","Movement flow", "Movement maturity",
-                    "Detection int 1","Detection int 2",'Habitat diversity index', 
-                    'Prop casc, falls,riff','Prop veg stable bank', 
-                    "Density LWD","Survival int","Survival flow","Precision")) 
-
-##for plotting 1992 and 1993 together, could be nice
-# MCMCplot(object = MCMC_data, 
-#          object2 = MCMC_data2, 
-#          params = 'beta', 
-#          offset = 0.1,
-#          ref_ovl = TRUE)
 ###############################################################################
 ###1. model selection for indicator variables
 ################################################################################
@@ -490,34 +436,6 @@ FlowC93_17w <- c( -5.03635353, -2.32602673,-2.92877105, -2.54093138, -0.37165862
 wk.phi$FlowC93 <- FlowC93_17w ##this is because no estimate fo survival for week one.
 #wk.phi$TempB93 <- TempB93_17w
 
-RStudioGD() 
-##!!!!MAKE A PLOT FOR SURVIVAL BY WEEK with credible intervals!
-ggformat<-(
-  ggplot(wk.phi, aes(x = week2, y=weekphi,ymin = LCLphi, ymax = UCLphi)) +
-    geom_point()+
-    geom_pointrange(color="dodgerblue",size=0.5, shape = 20)+
-    geom_line(aes(y = FlowC93_17w/7.5), color="blue4")+
-    theme_bw()+
-    scale_x_continuous(breaks = c(1,3,5,7,9,11,13),labels=c("1" = "Jun 23","3" = "Jul 7","5" = "Jul 22",
-               "7" = "Aug 4", "9" = "Aug 18","11" = "Sept 1","13" = "Sept 15"),
-             limits = c(1, 13))+
-    
-    scale_y_continuous("Mean survival",#limits = c(-0.75, 1),
-                       sec.axis = sec_axis(~ . *7.5,name = "Flow (cms)"),
-                       )+#breaks = seq(-5,0, by=5)
-    labs(title = "",  x = "")+
-    
-    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, size=9.5,color="black"))+
-    theme(axis.text.y = element_text(angle = 0, hjust = 0.2, size=11,color="black"))+
-    theme(axis.title.y = element_text(size = rel(1.5), angle = 90))+
-    theme(axis.title.x = element_text(size = rel(1.5), angle = 00))+
-    theme(plot.margin = margin(0,1,0,0, "cm"))
-)
-ggsave(filename="BTPRE1993weeklyphiOct292023.png", plot=ggformat, device="png",
-       height=4, width=6, units="in", dpi=800) 
-##############################################################
-##Plot for movement for fish that are very likely alive
-#make PLOT of FISH MOVEMENTS (by fish)
 ################################################################
 #filter out NAs and z<0.99
 movements <- new_frame%>%
@@ -532,36 +450,8 @@ movements <- new_frame%>%
   temp <- as.data.frame(temp93p)
   temp$week <- sort(unique(movements$week))
   df <- left_join(temp,dfpre)
-####################################################################################
-###all fish together
-###################################################################################
-df$fish <- as.factor(df$fish)
-ggformat <- (
-  ggplot(df, aes(x = week, y=avg.S+56, color=fish)) +
-    geom_point( size = 1)+
-    # geom_line(aes(y = FlowC93*7.5), color="blue4")+
-    geom_line(aes(y = temp93p*2.5), color="red4")+
-    #scale_color_viridis_d()+
-    scale_x_continuous(breaks = c(1,3,5,7,9,11,13,15,17),labels=c("1" = "May 26",
-          "3" = "Jun 9","5" = "Jun 23","7" = "Jul 7","9" = "Jul 22",
-          "11" = "Aug 4", "13" = "Aug 18","15" = "Sept 1","17" = "Sept 15"),
-             limits = c(1, 18))+
-    scale_y_continuous("Reach location (RKM)",limits = c(0, 102),
-                       sec.axis = sec_axis(~ . /6.5,name = "Temp (°C)",
-                          breaks = c(0,5,10,15)))+
-    theme_bw()+
-    theme(axis.text.x = element_text(angle = 0, hjust = 0.2, size=8.5,color="black"))+
-    theme(axis.text.y = element_text(angle = 0, hjust = 0, size=10,color="black"))+
-    theme(axis.title.y = element_text(size = rel(1.2), angle = 90))+
-    theme(axis.title.x = element_text(size = rel(1.2), angle = 00))+
-    labs(title = "", x = "")+
-    theme(plot.margin = margin(0,1,0,0, "cm"))+
-    theme(legend.position = "none")
-)
-ggsave(filename = "BT_Movements1993oct28_1993.png", plot=ggformat,
-       device="png",height=4,width=6,units = "in",dpi=800)
-############################################################################
-##make plot lam0 by reach
+
+## lam0 by reach
 ############################################################################
 counter <-1
 m_covar <- matrix(0,nrow=20160, ncol = 8)
@@ -595,24 +485,3 @@ mean(lam0reach$lam0reach)
 mean(lam0reach$LCI)
 mean(lam0reach$UCI)
 #####################################################################
-##MAKE A PLOT FOR lam0 BY REACH with credible intervals!
-RStudioGD()
-
-ggformat<-(
-  ggplot(lam0reach, aes(x = reach, y=lam0reach, ymin = LCI, ymax = UCI)) +
-    geom_point()+
-    geom_pointrange(color="black",size=0.5, shape = 20)+
-    theme_bw()+
-    scale_x_continuous(breaks = c(1,5,9,13,17,21,25,29,33,37,40),
-                       labels=c("1" = "63","5" = "67", "9" = "72","13" = "76",
-                                "17" = "80","21" = "84", "25" = "88","29" = "92",
-                                "33" = "94","37" = "96","40" = "99"))+
-    theme(axis.text.x = element_text(angle = 0, hjust = 0, size=10,color="black"))+
-    theme(axis.text.y = element_text(angle = 0, hjust = 0, size=12,color="black"))+
-    theme(axis.title.y = element_text(size = rel(1.4), angle = 90))+
-    theme(axis.title.x = element_text(size = rel(1.4), angle = 00))+
-    ylim(0,1)+
-    labs(title = "", y = "Mean detection rate", x = "Rapid River Reach (RKM)")
-)
-ggsave(filename="BTPRE1993reachlam0Oct28_2023.png", plot=ggformat, device="png",
-       height=5, width=5, units="in", dpi=800) 
